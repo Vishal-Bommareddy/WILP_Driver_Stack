@@ -1,0 +1,19 @@
+# ROS 2 build artifacts
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+
+# Editors
+.vscode/
+.idea/
+
+# Temporary files
+*.swp
+*~
+# External driver repositories
+src/vesc/
+src/urg_node2/
