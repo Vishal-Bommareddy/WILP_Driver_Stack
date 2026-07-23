@@ -4,6 +4,7 @@ import sys
 import tty
 import termios
 import select
+import math
 
 import rclpy
 from rclpy.node import Node
@@ -32,14 +33,15 @@ class KeyboardNode(Node):
         # Vehicle state
         self.target_speed = 1.0      # m/s
         self.current_speed = 0.0
-        self.servo_position = 0.50
+        self.steering_angle =0.0
 
         self.speed_step = 0.5
-        self.servo_step = 0.05
-
+        self.steering_step = math.radians(2.0)
+        self.max_steering_angle = 0.36  # radians
         self.max_speed = 8.0
         self.min_speed = -8.0
 
+        #cli control instructions
         self.get_logger().info("")
         self.get_logger().info("===== Keyboard Controls =====")
         self.get_logger().info("W : Forward")
@@ -59,9 +61,7 @@ class KeyboardNode(Node):
 
         msg.drive.speed = self.current_speed
 
-        # Temporarily using steering_angle
-        # field to carry servo position
-        msg.drive.steering_angle = self.servo_position
+        msg.drive.steering_angle = self.steering_angle
 
         self.publisher.publish(msg)
 
@@ -112,19 +112,21 @@ class KeyboardNode(Node):
             self.current_speed = 0.0
 
         elif key == 'a':
-            self.servo_position = max(
-                0.15,
-                self.servo_position - self.servo_step
+            self.steering_angle -= self.steering_step
+            self.steering_angle = max(
+                -self.max_steering_angle,
+                min(self.max_steering_angle, self.steering_angle)
             )
 
         elif key == 'd':
-            self.servo_position = min(
-                0.85,
-                self.servo_position + self.servo_step
+            self.steering_angle += self.steering_step
+            self.steering_angle = max(
+                -self.max_steering_angle,
+                min(self.max_steering_angle, self.steering_angle)
             )
 
         elif key == 'c':
-            self.servo_position = 0.50
+            self.steering_angle = 0.0
 
         elif key == '+':
             self.target_speed = min(
@@ -147,7 +149,7 @@ class KeyboardNode(Node):
         self.get_logger().info(
             f"Target Speed: {self.target_speed:.2f} m/s | "
             f"Current Speed: {self.current_speed:.2f} m/s | "
-            f"Servo: {self.servo_position:.2f}"
+            f"Steering Angle: {self.steering_angle:.3f} rad"
         )
 
         return True
