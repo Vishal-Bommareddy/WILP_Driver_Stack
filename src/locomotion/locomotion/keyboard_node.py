@@ -37,7 +37,7 @@ class KeyboardNode(Node):
 
         self.speed_step = 0.5
         self.steering_step = math.radians(2.0)
-        self.max_steering_angle = 0.36  # radians
+        self.max_steering_angle = 0.255  # radians
         self.max_speed = 8.0
         self.min_speed = -8.0
 

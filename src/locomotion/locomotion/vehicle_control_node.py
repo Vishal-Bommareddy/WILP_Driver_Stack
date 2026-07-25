@@ -77,7 +77,8 @@ class VehicleControlNode(Node):
 
         # Steering conversion
         servo_position = desired_steering * self.STEERING_TO_SERVO_GAIN + self.STEERING_TO_SERVO_OFFSET
-
+        servo_position = max(self.SERVO_MIN, min(self.SERVO_MAX, servo_position))
+        
         
         # Create messages
         motor_msg = Float64()

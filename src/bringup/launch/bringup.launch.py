@@ -44,10 +44,18 @@ def generate_launch_description():
         output="screen",
         parameters = [vehicle_config],
     )
+    odometry_node = Node(
+        package="odometry",
+        executable="odometry_node",
+        name="odometry_node",
+        output="screen",
+        parameters=[vehicle_config],
+    )
     
 
     return LaunchDescription([
         vesc_launch,
         lidar_launch,
         vehicle_control_node,
+        odometry_node,
     ])
