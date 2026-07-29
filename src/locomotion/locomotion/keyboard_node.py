@@ -5,11 +5,11 @@ import tty
 import termios
 import select
 import math
-
 import rclpy
-from rclpy.node import Node
 
+from rclpy.node import Node
 from ackermann_msgs.msg import AckermannDriveStamped
+from std_msgs.msg import Bool
 
 
 class KeyboardNode(Node):
@@ -17,20 +17,27 @@ class KeyboardNode(Node):
     def __init__(self):
         super().__init__('keyboard_node')
 
-        # Publisher
+            # Publisher
         self.publisher = self.create_publisher(
             AckermannDriveStamped,
             '/drive',
             10
+       )
+            # Emergency Brake Subscriber
+        self.ebrake_sub = self.create_subscription(
+            Bool,
+            '/ebrake',
+            self.ebrake_callback,
+            10
         )
 
-        # Publish at 20 Hz
+            # Publish at 20 Hz
         self.timer = self.create_timer(
             0.05,
             self.publish_command
-        )
+       )
 
-        # Vehicle state
+            # Vehicle state
         self.target_speed = 1.0      # m/s
         self.current_speed = 0.0
         self.steering_angle =0.0
@@ -41,7 +48,7 @@ class KeyboardNode(Node):
         self.max_speed = 8.0
         self.min_speed = -8.0
 
-        #cli control instructions
+            #cli control instructions
         self.get_logger().info("")
         self.get_logger().info("===== Keyboard Controls =====")
         self.get_logger().info("W : Forward")
@@ -58,7 +65,6 @@ class KeyboardNode(Node):
     def publish_command(self):
 
         msg = AckermannDriveStamped()
-
         msg.drive.speed = self.current_speed
 
         msg.drive.steering_angle = self.steering_angle
@@ -79,13 +85,12 @@ class KeyboardNode(Node):
                 [],
                 [],
                 timeout
-            )
+           )
 
             if rlist:
                 key = sys.stdin.read(1)
             else:
                 key = ''
-
         finally:
             termios.tcsetattr(
                 fd,
@@ -96,7 +101,6 @@ class KeyboardNode(Node):
         return key
 
     def process_key(self, key):
-
         if key == '':
             return True
 
@@ -127,11 +131,10 @@ class KeyboardNode(Node):
 
         elif key == 'c':
             self.steering_angle = 0.0
-
         elif key == '+':
             self.target_speed = min(
-                self.max_speed,
-                self.target_speed + self.speed_step
+            self.max_speed,
+            self.target_speed + self.speed_step
             )
 
         elif key == '-':
@@ -153,6 +156,17 @@ class KeyboardNode(Node):
         )
 
         return True
+
+    def ebrake_callback(self, msg):
+
+        if msg.data and self.current_speed != 0.0:
+
+            self.current_speed = 0.0
+
+            self.get_logger().warn(
+                "Emergency Brake Activated!"
+            )
+                
 def main(args=None):
 
     rclpy.init(args=args)
@@ -168,7 +182,7 @@ def main(args=None):
             if not node.process_key(key):
                 break
 
-            # Allow timer callbacks (20 Hz publisher) to execute
+                # Allow timer callbacks (20 Hz publisher) to execute
             rclpy.spin_once(node, timeout_sec=0.0)
 
     except KeyboardInterrupt:
@@ -182,5 +196,5 @@ def main(args=None):
             rclpy.shutdown()
 
 
-if __name__ == '__main__':
-    main()
+    if __name__ == '__main__':
+        main()
