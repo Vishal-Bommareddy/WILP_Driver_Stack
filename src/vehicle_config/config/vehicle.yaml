@@ -20,7 +20,7 @@ odometry_node:
     speed_to_erpm_gain: 4123.4
     speed_to_erpm_offset: 0.0
 
-    wheelbase: 0.33     # TBD
+    wheelbase: 0.325
     odom_frame: "odom"
     base_frame: "base_link"
 
