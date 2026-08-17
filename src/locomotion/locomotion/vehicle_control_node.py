@@ -17,7 +17,7 @@ class VehicleControlNode(Node):
         self.declare_parameter("speed_to_erpm_offset", 0.0)
 
         self.declare_parameter("steering_to_servo_gain", 1.2135)
-        self.declare_parameter("steering_to_servo_offset", 0.5405)
+        self.declare_parameter("steering_to_servo_offset", 0.55)
 
         self.declare_parameter("max_steering_angle", 0.36)
 
