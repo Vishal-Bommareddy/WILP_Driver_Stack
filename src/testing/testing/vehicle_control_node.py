@@ -11,11 +11,11 @@ class VehicleControlNode(Node):
     """Convert /drive commands to VESC motor and servo commands for testing."""
 
     # Calibration constants intentionally live here rather than ROS parameters.
-    SPEED_TO_ERPM_GAIN = 4123.4
+    SPEED_TO_ERPM_GAIN = 4142.11
     SPEED_TO_ERPM_OFFSET = 0.0
     STEERING_TO_SERVO_GAIN = 1.2135
-    STEERING_TO_SERVO_OFFSET = 0.55
-    SERVO_MIN = 0.15
+    STEERING_TO_SERVO_OFFSET = 0.583
+    SERVO_MIN = 0.32
     SERVO_MAX = 0.85
     MAX_SPEED = 8.0
     MIN_SPEED = -8.0

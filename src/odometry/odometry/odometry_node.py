@@ -17,12 +17,12 @@ class OdometryNode(Node):
         # Declare Parameters
 
         # Speed conversion
-        self.declare_parameter("speed_to_erpm_gain", 4123.4)
+        self.declare_parameter("speed_to_erpm_gain", 4142.11)
         self.declare_parameter("speed_to_erpm_offset", 0.0)
 
         # Steering conversion
         self.declare_parameter("steering_to_servo_gain", 1.2135)
-        self.declare_parameter("steering_to_servo_offset", 0.5405)
+        self.declare_parameter("steering_to_servo_offset", 0.583)
 
         # Vehicle parameters
         self.declare_parameter("wheelbase", 0.33)
