@@ -1,8 +1,6 @@
 from setuptools import find_packages, setup
-import os
-from glob import glob
 
-package_name = 'safety'
+package_name = 'wall_following'
 
 setup(
     name=package_name,
@@ -12,23 +10,17 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        (os.path.join('share', package_name, 'launch'),
-            glob('launch/*.launch.py')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
     maintainer='wilp',
-    maintainer_email='bommareddyvishal@gmail.com',
-    description='TODO: Package description',
+    maintainer_email='wilp@todo.todo',
+    description='LiDAR-based left-wall following controller.',
     license='TODO: License declaration',
-    extras_require={
-        'test': [
-            'pytest',
-        ],
-    },
+    extras_require={'test': ['pytest']},
     entry_points={
         'console_scripts': [
-            'safety_node = safety.safety_node:main',
+            'wall_follow_node = wall_following.wall_follow_node:main',
         ],
     },
 )

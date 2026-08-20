@@ -4,7 +4,7 @@ import rclpy
 from rclpy.node import Node
 
 from ackermann_msgs.msg import AckermannDriveStamped
-from std_msgs.msg import Float64
+from std_msgs.msg import Bool, Float64
 
 
 class VehicleControlNode(Node):
@@ -48,6 +48,13 @@ class VehicleControlNode(Node):
             self.drive_callback,
             10,
         )
+        self.emergency_sub = self.create_subscription(
+            Bool, "/emergency", self.emergency_callback, 10)
+        self.aeb_sub = self.create_subscription(
+            AckermannDriveStamped, "/aeb", self.aeb_callback, 10)
+        self.emergency_active = False
+        self.latest_aeb = None
+        self.latest_drive = None
         # Publishers
         self.motor_pub = self.create_publisher(
             Float64,
@@ -66,6 +73,26 @@ class VehicleControlNode(Node):
         self.get_logger().info("====================================")
 
     def drive_callback(self, msg: AckermannDriveStamped):
+        self.latest_drive = msg
+        # Normal commands cannot override a latched AEB command.
+        if self.emergency_active:
+            return
+        self.publish_command(msg)
+
+    def emergency_callback(self, msg: Bool):
+        self.emergency_active = msg.data
+        if self.emergency_active and self.latest_aeb is not None:
+            self.publish_command(self.latest_aeb)
+        elif not self.emergency_active and self.latest_drive is not None:
+            # Resume the last requested drive command when AEB releases.
+            self.publish_command(self.latest_drive)
+
+    def aeb_callback(self, msg: AckermannDriveStamped):
+        self.latest_aeb = msg
+        if self.emergency_active:
+            self.publish_command(msg)
+
+    def publish_command(self, msg: AckermannDriveStamped):
 
         # Read desired command
         desired_speed = msg.drive.speed              # m/s

@@ -5,6 +5,7 @@ from rclpy.node import Node
 
 import numpy as np
 
+from ackermann_msgs.msg import AckermannDriveStamped
 from sensor_msgs.msg import LaserScan
 from nav_msgs.msg import Odometry
 from std_msgs.msg import Bool
@@ -23,6 +24,13 @@ class SafetyNode(Node):
 
         self.speed = 0.0
         self.ttc_threshold = 0.5
+        self.declare_parameter('aeb_half_angle', np.deg2rad(30.0))
+        self.aeb_half_angle = self.get_parameter('aeb_half_angle').value
+        self.declare_parameter('aeb_range_hysteresis', 0.05)
+        self.range_hysteresis = self.get_parameter('aeb_range_hysteresis').value
+        self.aeb_active = False
+        self.trigger_range = None
+        self.latest_steering = 0.0
 
         # Subscribers
         self.scan_sub = self.create_subscription(
@@ -39,53 +47,85 @@ class SafetyNode(Node):
             10
         )
 
+        self.drive_sub = self.create_subscription(
+            AckermannDriveStamped,
+            '/drive',
+            self.drive_callback,
+            10
+        )
+
         # Publisher
         self.ebrake_pub = self.create_publisher(
             Bool,
-            '/ebrake',
+            '/emergency',
             10
         )
+        self.aeb_pub = self.create_publisher(AckermannDriveStamped, '/aeb', 10)
+
+    def drive_callback(self, drive_msg):
+        self.latest_steering = drive_msg.drive.steering_angle
+
+    def set_aeb_state(self, active, trigger_range=None):
+        self.aeb_active = active
+        self.trigger_range = trigger_range if active else None
+
+    def publish_aeb(self):
+        emergency_msg = Bool()
+        emergency_msg.data = self.aeb_active
+        self.ebrake_pub.publish(emergency_msg)
+
+        if self.aeb_active:
+            aeb_msg = AckermannDriveStamped()
+            aeb_msg.drive.speed = 0.0
+            aeb_msg.drive.steering_angle = self.latest_steering
+            self.aeb_pub.publish(aeb_msg)
 
     def odom_callback(self, odom_msg):
         self.speed = odom_msg.twist.twist.linear.x
 
     def scan_callback(self, scan_msg):
 
-        ranges = np.array(scan_msg.ranges)
-
+        ranges = np.array(scan_msg.ranges, dtype=float)
         angles = scan_msg.angle_min + \
             np.arange(len(ranges)) * scan_msg.angle_increment
+        forward_mask = np.abs(angles) <= self.aeb_half_angle
+        valid_mask = forward_mask & np.isfinite(ranges) & (ranges > 0.0)
+        valid_ranges = ranges[valid_mask]
+        min_range = np.min(valid_ranges) if valid_ranges.size else None
 
         # Closing speed for each beam
         range_rates = -self.speed * np.cos(angles)
 
+        safe_ranges = np.where(valid_mask, ranges, np.inf)
         ttc = np.where(
             range_rates >= 0,
             np.inf,
-            ranges / (-range_rates)
+            safe_ranges / (-range_rates)
         )
 
-        min_ttc = np.min(ttc)
-
+        min_ttc = np.min(ttc) if ttc.size else np.inf
         self.get_logger().info(
             f"Speed: {self.speed:.2f} m/s | Min TTC: {min_ttc:.2f} s"
         )
 
-        brake_msg = Bool()
-
-        if min_ttc < self.ttc_threshold:
-
-            self.get_logger().warn(
-                f"EMERGENCY BRAKE! TTC = {min_ttc:.3f} s | "
-                f"Speed = {self.speed:.2f} m/s"
-            )
-
-            brake_msg.data = True
-
+        # TTC arms AEB once; after that, range alone keeps it latched.
+        if not self.aeb_active:
+            if min_range is not None and min_ttc < self.ttc_threshold:
+                self.set_aeb_state(True, min_range)
+                self.get_logger().warn(
+                    f"AEB active: TTC = {min_ttc:.3f} s | "
+                    f"Trigger range = {min_range:.3f} m"
+                )
         else:
-            brake_msg.data = False
+            # Keep AEB latched until the closest valid return is safely clear.
+            if (min_range is None or
+                    min_range > self.trigger_range + self.range_hysteresis):
+                self.set_aeb_state(False)
+                self.get_logger().info(
+                    "AEB cleared: minimum obstacle range is safe or invalid"
+                )
 
-        self.ebrake_pub.publish(brake_msg)
+        self.publish_aeb()
 
 
 def main(args=None):
